@@ -1,0 +1,4 @@
+{
+    "python.formatting.provider": "black", // 选择 black
+    "editor.formatOnSave": true // 保存时自动格式化
+}

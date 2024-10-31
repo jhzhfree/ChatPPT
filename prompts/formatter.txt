@@ -18,5 +18,4 @@ Please present the organized slide content in the following format:
 
 ## [Slide Title]
 - [Key point 1]
-![Image Description](Image Path)
 ```
