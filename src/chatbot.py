@@ -6,7 +6,8 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder  # 导入提示模板相关类
 from langchain_core.messages import HumanMessage  # 导入消息类
 from langchain_core.runnables.history import RunnableWithMessageHistory  # 导入带有消息历史的可运行类
-
+import openai
+import os
 from logger import LOG  # 导入日志工具
 from chat_history import get_session_history
 
@@ -43,9 +44,10 @@ class ChatBot(ABC):
             MessagesPlaceholder(variable_name="messages"),  # 消息占位符
         ])
 
+        openai.api_key = os.getenv("OPENAI_API_KEY")
         # 初始化 ChatOllama 模型，配置参数
         self.chatbot = system_prompt | ChatOpenAI(
-            model="gpt-4o-mini",
+            model="gpt-3.5-turbo",
             temperature=0.5,
             max_tokens=4096
         )

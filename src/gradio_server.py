@@ -11,7 +11,7 @@ from template_manager import load_template, get_layout_mapping
 from layout_manager import LayoutManager
 from logger import LOG
 from openai_whisper import asr, transcribe
-from minicpm_v_model import chat_with_image
+#from minicpm_v_model import chat_with_image
 from docx_parser import generate_markdown_from_docx
 
 
@@ -49,13 +49,13 @@ def generate_contents(message, history):
                 audio_text = asr(uploaded_file)
                 texts.append(audio_text)
             # 解释说明图像文件
-            elif file_ext in ('.jpg', '.png', '.jpeg'):
-                if text_input:
-                    image_desc = chat_with_image(uploaded_file, text_input)
-                else:
-                    image_desc = chat_with_image(uploaded_file)
-                LOG.info(f"[图像解释]：{image_desc}")
-                return image_desc
+            # elif file_ext in ('.jpg', '.png', '.jpeg'):
+            #     if text_input:
+            #         image_desc = chat_with_image(uploaded_file, text_input)
+            #     else:
+            #         image_desc = chat_with_image(uploaded_file)
+            #     LOG.info(f"[图像解释]：{image_desc}")
+            #     return image_desc
             # 使用 Docx 文件作为素材创建 PowerPoint
             elif file_ext in ('.docx', '.doc'):
                 # 调用 generate_markdown_from_docx 函数，获取 markdown 内容
@@ -112,14 +112,14 @@ with gr.Blocks(
     gr.Markdown("## ChatPPT")
 
     # 定义语音（mic）转文本的接口
-    # gr.Interface(
-    #     fn=transcribe,  # 执行转录的函数
-    #     inputs=[
-    #         gr.Audio(sources="microphone", type="filepath"),  # 使用麦克风录制的音频输入
-    #     ],
-    #     outputs="text",  # 输出为文本
-    #     flagging_mode="never",  # 禁用标记功能
-    # )
+    gr.Interface(
+        fn=transcribe,  # 执行转录的函数
+        inputs=[
+            gr.Audio(sources="microphone", type="filepath"),  # 使用麦克风录制的音频输入
+        ],
+        outputs="text",  # 输出为文本
+        flagging_mode="never",  # 禁用标记功能
+    )
 
     # 创建聊天机器人界面，提示用户输入
     contents_chatbot = gr.Chatbot(
@@ -150,7 +150,7 @@ with gr.Blocks(
 if __name__ == "__main__":
     # 启动Gradio应用，允许队列功能，并通过 HTTPS 访问
     demo.queue().launch(
-        share=False,
-        server_name="0.0.0.0",
+        share=True,
+        server_name="127.0.0.1",
         # auth=("django", "1234") # ⚠️注意：记住修改密码
     )
