@@ -5,7 +5,7 @@ from logger import LOG  # 引入日志模块，用于记录日志
 # 加载模型和分词器
 # 这里我们使用 `AutoModel` 和 `AutoTokenizer` 加载模型 'openbmb/MiniCPM-V-2_6-int4'
 # 参数 `trust_remote_code=True` 表示信任远程代码（根据模型文档设置）
-model = AutoModel.from_pretrained('openbmb/MiniCPM-V-2_6-int4', trust_remote_code=True)
+model = AutoModel.from_pretrained('openbmb/MiniCPM-V-2_6-int4', trust_remote_code=True, device_map="auto")
 tokenizer = AutoTokenizer.from_pretrained('openbmb/MiniCPM-V-2_6-int4', trust_remote_code=True)
 model.eval()  # 设置模型为评估模式，以确保不进行训练中的随机性操作
 
