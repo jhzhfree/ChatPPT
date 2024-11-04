@@ -1,25 +1,32 @@
 import gradio as gr
 import os
 
+from gradio.data_classes import FileData
+
 from config import Config
 from chatbot import ChatBot
 from content_formatter import ContentFormatter
 from content_assistant import ContentAssistant
+from image_advisor import ImageAdvisor
 from input_parser import parse_input_text
 from ppt_generator import generate_presentation
 from template_manager import load_template, get_layout_mapping
 from layout_manager import LayoutManager
 from logger import LOG
 from openai_whisper import asr, transcribe
-#from minicpm_v_model import chat_with_image
+# from minicpm_v_model import chat_with_image
 from docx_parser import generate_markdown_from_docx
 
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_PROJECT"] = "ChatPPT"
 
 # 实例化 Config，加载配置文件
 config = Config()
 chatbot = ChatBot(config.chatbot_prompt)
 content_formatter = ContentFormatter(config.content_formatter_prompt)
 content_assistant = ContentAssistant(config.content_assistant_prompt)
+image_advisor = ImageAdvisor(config.image_advisor_prompt)
 
 # 加载 PowerPoint 模板，并获取可用布局
 ppt_template = load_template(config.ppt_template)
@@ -41,7 +48,7 @@ def generate_contents(message, history):
 
         # 获取上传的文件列表，如果存在则处理每个文件
         for uploaded_file in message.get("files", []):
-            LOG.info(f"[上传文件]: {uploaded_file}")
+            LOG.debug(f"[上传文件]: {uploaded_file}")
             # 获取文件的扩展名，并转换为小写
             file_ext = os.path.splitext(uploaded_file)[1].lower()
             if file_ext in ('.wav', '.flac', '.mp3'):
@@ -54,16 +61,13 @@ def generate_contents(message, history):
             #         image_desc = chat_with_image(uploaded_file, text_input)
             #     else:
             #         image_desc = chat_with_image(uploaded_file)
-            #     LOG.info(f"[图像解释]：{image_desc}")
             #     return image_desc
             # 使用 Docx 文件作为素材创建 PowerPoint
             elif file_ext in ('.docx', '.doc'):
                 # 调用 generate_markdown_from_docx 函数，获取 markdown 内容
                 raw_content = generate_markdown_from_docx(uploaded_file)
                 markdown_content = content_formatter.format(raw_content)
-                input_text = content_assistant.adjust_single_picture(markdown_content)
-                LOG.info(f"[文档内容]：{input_text}")
-                return input_text
+                return content_assistant.adjust_single_picture(markdown_content)
             else:
                 LOG.debug(f"[格式不支持]: {uploaded_file}")
 
@@ -78,8 +82,31 @@ def generate_contents(message, history):
     except Exception as e:
         LOG.error(f"[内容生成错误]: {e}")
         # 抛出 Gradio 错误，以便在界面上显示友好的错误信息
-        raise gr.Error(f"【提示】网络问题，请重试")
+        raise gr.Error(f"网络问题，请重试:)")
         
+
+def handle_image_generate(history):
+    try:
+        # 获取聊天记录中的最新内容
+        slides_content = history[-1]["content"]
+
+        content_with_images, image_pair = image_advisor.generate_images(slides_content)
+        
+        # for k, v in image_pair.items():
+        #     history.append(
+        #         # {"text": k, "files": FileData(path=v)}
+        #         {"role": "user", "files": FileData(path=v)}
+        #     )
+
+        new_message = {"role": "assistant", "content": content_with_images}
+
+        history.append(new_message)
+
+        return history
+    except Exception as e:
+        LOG.error(f"[配图生成错误]: {e}")
+        # 提示用户先输入主题内容或上传文件
+        raise gr.Error(f"【提示】未找到合适配图，请重试！")
 
 # 定义处理生成按钮点击事件的函数
 def handle_generate(history):
@@ -112,14 +139,14 @@ with gr.Blocks(
     gr.Markdown("## ChatPPT")
 
     # 定义语音（mic）转文本的接口
-    gr.Interface(
-        fn=transcribe,  # 执行转录的函数
-        inputs=[
-            gr.Audio(sources="microphone", type="filepath"),  # 使用麦克风录制的音频输入
-        ],
-        outputs="text",  # 输出为文本
-        flagging_mode="never",  # 禁用标记功能
-    )
+    # gr.Interface(
+    #     fn=transcribe,  # 执行转录的函数
+    #     inputs=[
+    #         gr.Audio(sources="microphone", type="filepath"),  # 使用麦克风录制的音频输入
+    #     ],
+    #     outputs="text",  # 输出为文本
+    #     flagging_mode="never",  # 禁用标记功能
+    # )
 
     # 创建聊天机器人界面，提示用户输入
     contents_chatbot = gr.Chatbot(
@@ -136,6 +163,14 @@ with gr.Blocks(
         multimodal=True  # 支持多模态输入（文本和文件）
     )
 
+    image_generate_btn = gr.Button("一键为 PowerPoint 配图")
+
+    image_generate_btn.click(
+        fn=handle_image_generate,
+        inputs=contents_chatbot,
+        outputs=contents_chatbot,
+    )
+
     # 创建生成 PowerPoint 的按钮
     generate_btn = gr.Button("一键生成 PowerPoint")
 
@@ -150,7 +185,7 @@ with gr.Blocks(
 if __name__ == "__main__":
     # 启动Gradio应用，允许队列功能，并通过 HTTPS 访问
     demo.queue().launch(
-        share=True,
-        server_name="127.0.0.1",
-        # auth=("django", "1234") # ⚠️注意：记住修改密码
+        share=False,
+        server_name="0.0.0.0",
+        # auth=("django", "qaz!@#$") # ⚠️注意：记住修改密码
     )
