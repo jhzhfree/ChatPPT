@@ -4,7 +4,8 @@ import os
 from gradio.data_classes import FileData
 
 from config import Config
-from chatbot import ChatBot
+#from chatbot import ChatBot
+from ref import ChatAssistant
 from content_formatter import ContentFormatter
 from content_assistant import ContentAssistant
 from image_advisor import ImageAdvisor
@@ -16,6 +17,15 @@ from logger import LOG
 from openai_whisper import asr, transcribe
 # from minicpm_v_model import chat_with_image
 from docx_parser import generate_markdown_from_docx
+import getpass
+import asyncio
+def _set_if_undefined(var: str):
+    if not os.environ.get(var):
+        os.environ[var] = getpass.getpass(f"请输入您的 {var}")
+        
+        
+_set_if_undefined("LANGSMITH_API_KEY")
+_set_if_undefined("OPENAI_API_KEY")
 
 
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -23,9 +33,15 @@ os.environ["LANGCHAIN_PROJECT"] = "ChatPPT"
 
 # 实例化 Config，加载配置文件
 config = Config()
-chatbot = ChatBot(config.chatbot_prompt)
+#chatbot = ChatBot(config.chatbot_prompt)
+reflect_promte = """###角色: 你是一位严格且公正的内容评审员，专注于评估主聊天机器人生成的内容。你的职责是确保主聊天机器人输出的内容符合其提示词的标准，具备结构化、逻辑性、内容深度和适合PowerPoint演示的特点。
+
+目标: 反思体在主聊天机器人的输出基础上进行深入评估，确认内容是否符合主聊天机器人的提示词要求，并提出优化建议，以确保内容适合演示文稿
+    """
+assistant = ChatAssistant(writer_model_url="http://172.16.3.199:11434", reflect_model_url="http://172.16.3.199:11434", reflect_prompt=reflect_promte)
 content_formatter = ContentFormatter(config.content_formatter_prompt)
 content_assistant = ContentAssistant(config.content_assistant_prompt)
+#image_advisor = ImageAdvisor(config.image_advisor_prompt)
 image_advisor = ImageAdvisor(config.image_advisor_prompt)
 
 # 加载 PowerPoint 模板，并获取可用布局
@@ -76,7 +92,8 @@ def generate_contents(message, history):
         LOG.info(user_requirement)
 
         # 与聊天机器人进行对话，生成幻灯片内容
-        slides_content = chatbot.chat_with_history(user_requirement)
+        slides_content = asyncio.run(assistant.start_chat(user_requirement))
+        #slides_content = chatbot.chat_with_history(user_requirement)
 
         return slides_content
     except Exception as e:
@@ -186,6 +203,6 @@ if __name__ == "__main__":
     # 启动Gradio应用，允许队列功能，并通过 HTTPS 访问
     demo.queue().launch(
         share=False,
-        server_name="0.0.0.0",
+        server_name="127.0.0.1",
         # auth=("django", "qaz!@#$") # ⚠️注意：记住修改密码
     )

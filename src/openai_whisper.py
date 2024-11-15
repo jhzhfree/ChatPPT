@@ -156,6 +156,6 @@ if __name__ == "__main__":
     # 启动Gradio应用，允许队列功能，并通过 HTTPS 访问
     demo.queue().launch(
         share=False,
-        server_name="0.0.0.0",
+        server_name="127.0.0.1",
         # auth=("django", "1234") # ⚠️注意：记住修改密码
     )
